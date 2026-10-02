@@ -71,7 +71,11 @@ function errorMessage(body, fallback) {
   if (Array.isArray(body?.errors)) {
     return body.errors.map((item) => typeof item === 'string' ? item : item?.message || JSON.stringify(item)).join('; ');
   }
-  if (body?.error_code) return body.error_code;
+  if (body?.error_code) return String(body.error_code);
+  try {
+    if (body && typeof body === 'object' && Object.keys(body).length) return JSON.stringify(body);
+  } catch {}
+  
   return fallback;
 }
 
