@@ -58,6 +58,22 @@ const handler = async (req, res) => {
     }
     if (req.method === 'GET' && (url.pathname === '/checkout-test.js' || url.pathname === '/api/checkout-test.js')) return serve(res, 'checkout-test.js');
     if (req.method === 'GET' && (url.pathname === '/dashboard.js' || url.pathname === '/api/dashboard.js')) return serve(res, 'dashboard.js');
+    if (req.method === 'POST' && url.pathname === '/api/payments/checkout-test/start') {
+      const reference = `cake_test_${crypto.randomUUID().replaceAll('-', '')}`;
+      console.log('[Bachs] start checkout', { host: req.headers.host, apiBaseConfigured: Boolean(process.env.BACHS_API_BASE_URL), secretConfigured: Boolean(process.env.BACHS_SECRET_KEY) });
+      try {
+        try { await createPayment({ reference, ...TEST_ORDER, status: 'pending', createdAt: new Date().toISOString() }); } catch (error) { console.warn('[Bachs] payment store unavailable', error.message); }
+        const callbackUrl = `${baseUrl(req)}/checkout-test/callback?reference=${reference}`;
+        const initialized = await initializeBachsPayment(reference, callbackUrl);
+        try { await updatePayment(reference, { providerReference: initialized.checkoutId, checkoutUrl: initialized.checkoutUrl }); } catch (error) { console.warn('[Bachs] payment store update unavailable', error.message); }
+        console.log('[Bachs] redirecting to checkout', { checkoutId: initialized.checkoutId, checkoutUrl: initialized.checkoutUrl });
+        res.writeHead(303, { Location: initialized.checkoutUrl, 'Cache-Control': 'no-store' });
+        return res.end();
+      } catch (error) {
+        console.error('[Bachs] start checkout failed', error);
+        return send(res, 502, { error: error instanceof Error ? error.message : JSON.stringify(error) });
+      }
+    }
     if (req.method === 'POST' && url.pathname === '/api/payments/checkout-test/initialize') {
       console.log('[Bachs] initialize request', { host: req.headers.host, baseUrl: baseUrl(req), apiBaseConfigured: Boolean(process.env.BACHS_API_BASE_URL), secretConfigured: Boolean(process.env.BACHS_SECRET_KEY) });
       const reference = `cake_test_${crypto.randomUUID().replaceAll('-', '')}`;
