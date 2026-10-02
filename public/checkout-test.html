@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Checkout test</title><style>body{font-family:system-ui,sans-serif;background:#f6f7fb;margin:0;color:#182031}main{max-width:440px;margin:10vh auto;padding:28px;background:white;border-radius:16px;box-shadow:0 8px 28px #18203118}p{color:#596277}.amount{font-size:2rem;font-weight:750}button{width:100%;border:0;border-radius:9px;padding:15px;background:#1e56d9;color:white;font-weight:700;font-size:1rem;cursor:pointer}button:disabled{opacity:.6;cursor:wait}.notice{min-height:25px;margin:18px 0}.error{color:#b42318}.success{color:#067647}a{color:#1e56d9}</style></head><body><main><p>CHECKOUT TEST</p><h1>Test Cake Order</h1><p>Payment test</p><div class="amount">₦5,000</div><p id="notice" class="notice" role="status"></p><button id="pay">Pay ₦5,000</button></main><script>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Checkout test</title><style>body{font-family:system-ui,sans-serif;background:#f6f7fb;margin:0;color:#182031}main{max-width:440px;margin:10vh auto;padding:28px;background:white;border-radius:16px;box-shadow:0 8px 28px #18203118}p{color:#596277}.amount{font-size:2rem;font-weight:750}button{width:100%;border:0;border-radius:9px;padding:15px;background:#1e56d9;color:white;font-weight:700;font-size:1rem;cursor:pointer}button:disabled{opacity:.6;cursor:wait}.notice{min-height:25px;margin:18px 0}.error{color:#b42318}.success{color:#067647}a{color:#1e56d9}</style></head><body><main><p>CHECKOUT TEST</p><h1>Test Cake Order</h1><p>Payment test</p><div class="amount">₦5,000</div><p id="notice" class="notice" role="status"></p><form method="POST" action="/api/payments/checkout-test/start"><button id="pay" type="submit">Pay ₦5,000</button></form></main><script>
 const button = document.querySelector('#pay');
 const notice = document.querySelector('#notice');
 
@@ -7,78 +7,39 @@ function show(message, style = '') {
   notice.className = `notice ${style}`;
 }
 
-function errorText(value) {
-  if (typeof value === 'string') return value;
-  try { return value ? JSON.stringify(value) : 'Unable to initialize payment.'; }
-  catch { return 'Unable to initialize payment.'; }
-}
-
-function normalizeCheckoutUrl(value) {
-  if (typeof value !== 'string' || !value.trim()) throw new Error('Bachs returned an empty checkout URL.');
-  try {
-    const url = new URL(value.trim());
-    if (!['https:', 'http:'].includes(url.protocol)) throw new Error();
-    return url.href;
-  } catch {
-    throw new Error('Bachs returned an invalid checkout URL.');
-  }
-}
-
 async function checkReturn() {
   const params = new URLSearchParams(location.search);
   const reference = params.get('reference');
   const checkoutId = params.get('checkout_id');
   if (!reference && !checkoutId) return;
-
   button.disabled = true;
   show('Verifying your payment securely…');
-
   try {
     const query = checkoutId
       ? `checkout_id=${encodeURIComponent(checkoutId)}${reference ? `&reference=${encodeURIComponent(reference)}` : ''}`
       : `reference=${encodeURIComponent(reference)}`;
-    const response = await fetch(`/api/payments/checkout-test/status?${query}`, { headers: { Accept: 'application/json' } });
+    const response = await fetch(`/api/payments/checkout-test/status?${query}`);
     const result = await response.json().catch(() => ({}));
-
-    if (!response.ok) throw new Error(errorText(result.error) || `Verification failed (HTTP ${response.status}).`);
+    if (!response.ok) throw new Error(typeof result.error === 'string' ? result.error : JSON.stringify(result.error || result));
     if (result.status === 'paid') {
       show('Payment verified. Redirecting to your dashboard…', 'success');
       setTimeout(() => location.replace(`/dashboard?reference=${encodeURIComponent(reference || '')}`), 600);
       return;
     }
-
     show(result.status === 'cancelled' ? 'Payment was cancelled.' : result.status === 'pending' ? 'Your payment is still pending. Refresh this page shortly.' : 'Payment failed. No charge was recorded.', 'error');
     button.textContent = 'Try again';
     button.disabled = false;
   } catch (error) {
-    show(errorText(error instanceof Error ? error.message : error), 'error');
+    show(error instanceof Error ? error.message : String(error), 'error');
     button.textContent = 'Try again';
     button.disabled = false;
   }
 }
 
-button.addEventListener('click', async () => {
+button.form?.addEventListener('submit', () => {
   button.disabled = true;
   button.textContent = 'Opening secure checkout…';
   show('Initializing secure Bachs checkout…');
-
-  try {
-    const response = await fetch('/api/payments/checkout-test/initialize', {
-      method: 'POST',
-      headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-      body: JSON.stringify({}),
-      cache: 'no-store',
-    });
-    const result = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(errorText(result.error) || `Unable to initialize payment (HTTP ${response.status}).`);
-
-    const checkoutUrl = normalizeCheckoutUrl(result.checkoutUrl);
-    window.location.assign(checkoutUrl);
-  } catch (error) {
-    show(errorText(error instanceof Error ? error.message : error), 'error');
-    button.textContent = 'Try again';
-    button.disabled = false;
-  }
 });
 
 checkReturn();
