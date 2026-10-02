@@ -1,0 +1,11 @@
+{
+  "name": "bachs-checkout-test",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "check": "node --check server.js && node --check public/checkout-test.js && node --check public/dashboard.js",
+    "test": "node --test test/payment-service.test.js"
+  }
+}
