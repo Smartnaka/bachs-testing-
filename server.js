@@ -30,7 +30,7 @@ async function serve(res, filename) { send(res, 200, await fs.readFile(path.join
 async function verifyAndPersist(reference) {
   const payment = await getPayment(reference);
   if (payment?.status === 'paid') return payment;
-  const verified = await verifyBachsPayment(reference);
+  const checkoutId = payment?.providerReference;\n  if (!checkoutId) return payment || null;\n  const verified = await verifyBachsPayment(checkoutId);
   const status = verified.status;
   // A provider success with an unexpected amount/currency is never accepted as paid.
   const acceptable = status === 'paid' && verified.amountMatches && verified.currencyMatches;
@@ -60,9 +60,9 @@ const handler = async (req, res) => {
       try { await createPayment({ reference, ...TEST_ORDER, status: 'pending', createdAt: new Date().toISOString() }); } catch (error) { console.warn('Payment store unavailable; continuing with provider verification.', error.message); }
       try {
         const initialized = await initializeBachsPayment(reference, `${baseUrl(req)}/checkout-test/callback?reference=${reference}`);
-        try { await updatePayment(reference, { providerReference: initialized.reference, checkoutUrl: initialized.checkoutUrl }); } catch (error) { console.warn('Payment store unavailable after initialization.', error.message); }
+        try { await updatePayment(reference, { providerReference: initialized.checkoutId, checkoutUrl: initialized.checkoutUrl }); } catch (error) { console.warn('Payment store unavailable after initialization.', error.message); }
         return send(res, 201, { reference, checkoutUrl: initialized.checkoutUrl });
-      } catch (error) { await updatePayment(reference, { status: 'failed', failureReason: error.message }); return send(res, 502, { error: error.message }); }
+      } catch (error) { try { await updatePayment(reference, { status: 'failed', failureReason: error.message }); } catch {} return send(res, 502, { error: error.message }); }
     }
     if (req.method === 'GET' && url.pathname === '/api/payments/checkout-test/status') {
       const reference = safeReference(url.searchParams.get('reference'));
