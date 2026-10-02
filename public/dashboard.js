@@ -1,0 +1,3 @@
+const reference = new URLSearchParams(location.search).get('reference'); const target = document.querySelector('#payment');
+if (!reference) target.textContent = 'Welcome to your dashboard.';
+else fetch(`/api/payments/checkout-test/receipt?reference=${encodeURIComponent(reference)}`).then(async r => ({ ok:r.ok, data:await r.json() })).then(({ok,data}) => { target.innerHTML = ok ? `<p class="paid">Payment successful</p><p>${data.name}: ₦${Number(data.amount).toLocaleString('en-NG')} (${data.reference})</p>` : '<p>Payment details are not available yet.</p>'; }).catch(() => { target.textContent = 'Payment details could not be loaded.'; });
