@@ -30,7 +30,9 @@ async function serve(res, filename) { send(res, 200, await fs.readFile(path.join
 async function verifyAndPersist(reference) {
   const payment = await getPayment(reference);
   if (payment?.status === 'paid') return payment;
-  const checkoutId = payment?.providerReference;\n  if (!checkoutId) return payment || null;\n  const verified = await verifyBachsPayment(checkoutId);
+  const checkoutId = payment?.providerReference;
+  if (!checkoutId) return payment || null;
+  const verified = await verifyBachsPayment(checkoutId);
   const status = verified.status;
   // A provider success with an unexpected amount/currency is never accepted as paid.
   const acceptable = status === 'paid' && verified.amountMatches && verified.currencyMatches;
@@ -49,8 +51,9 @@ const handler = async (req, res) => {
     if (req.method === 'GET' && (url.pathname === '/dashboard' || url.pathname === '/api/dashboard')) return serve(res, 'dashboard.html');
     if (req.method === 'GET' && (url.pathname === '/checkout-test/callback' || url.pathname === '/api/checkout-test/callback')) {
       const reference = safeReference(url.searchParams.get('reference') || url.searchParams.get('tx_ref'));
-      if (!reference) return send(res, 400, '<h1>Invalid payment callback</h1>', 'text/html; charset=utf-8');
-      res.writeHead(302, { Location: `/checkout-test?reference=${encodeURIComponent(reference)}`, 'Cache-Control': 'no-store' });
+      const checkoutId = url.searchParams.get('checkout_id');
+      if (!reference || !checkoutId) return send(res, 400, '<h1>Invalid payment callback</h1>', 'text/html; charset=utf-8');
+      res.writeHead(302, { Location: `/checkout-test?reference=${encodeURIComponent(reference)}&checkout_id=${encodeURIComponent(checkoutId)}`, 'Cache-Control': 'no-store' });
       return res.end();
     }
     if (req.method === 'GET' && (url.pathname === '/checkout-test.js' || url.pathname === '/api/checkout-test.js')) return serve(res, 'checkout-test.js');
