@@ -40,7 +40,7 @@ async function verifyAndPersist(reference) {
   return updatePayment(reference, { status: nextStatus, providerReference: verified.providerReference, verifiedAt: new Date().toISOString() });
 }
 
-http.createServer(async (req, res) => {
+const handler = async (req, res) => {
   const url = new URL(req.url, baseUrl(req));
   try {
     if (req.method === 'GET' && url.pathname === '/checkout-test') return serve(res, 'checkout-test.html');
@@ -81,4 +81,10 @@ http.createServer(async (req, res) => {
     }
     send(res, 404, { error: 'Not found.' });
   } catch (error) { console.error(error); send(res, 500, { error: 'Unexpected server error.' }); }
-}).listen(port, () => console.log(`Checkout test listening on http://localhost:${port}/checkout-test`));
+};
+
+export { handler };
+
+if (process.env.VERCEL !== '1') {
+  http.createServer(handler).listen(port, () => console.log(`Checkout test listening on http://localhost:${port}/checkout-test`));
+}
