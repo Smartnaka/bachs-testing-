@@ -59,16 +59,24 @@ const handler = async (req, res) => {
     if (req.method === 'GET' && (url.pathname === '/checkout-test.js' || url.pathname === '/api/checkout-test.js')) return serve(res, 'checkout-test.js');
     if (req.method === 'GET' && (url.pathname === '/dashboard.js' || url.pathname === '/api/dashboard.js')) return serve(res, 'dashboard.js');
     if (req.method === 'POST' && url.pathname === '/api/payments/checkout-test/initialize') {
+      console.log('[Bachs] initialize request', { host: req.headers.host, baseUrl: baseUrl(req), apiBaseConfigured: Boolean(process.env.BACHS_API_BASE_URL), secretConfigured: Boolean(process.env.BACHS_SECRET_KEY) });
       const reference = `cake_test_${crypto.randomUUID().replaceAll('-', '')}`;
       try { await createPayment({ reference, ...TEST_ORDER, status: 'pending', createdAt: new Date().toISOString() }); } catch (error) { console.warn('Payment store unavailable; continuing with provider verification.', error.message); }
       try {
         const initialized = await initializeBachsPayment(reference, `${baseUrl(req)}/checkout-test/callback?reference=${reference}`);
         try { await updatePayment(reference, { providerReference: initialized.checkoutId, checkoutUrl: initialized.checkoutUrl }); } catch (error) { console.warn('Payment store unavailable after initialization.', error.message); }
         return send(res, 201, { reference, checkoutUrl: initialized.checkoutUrl });
-      } catch (error) { try { await updatePayment(reference, { status: 'failed', failureReason: error.message }); } catch {} return send(res, 502, { error: error.message }); }
+      } catch (error) { console.error('[Bachs] initialize failed', error); try { await updatePayment(reference, { status: 'failed', failureReason: error instanceof Error ? error.message : JSON.stringify(error) }); } catch {} return send(res, 502, { error: error instanceof Error ? error.message : JSON.stringify(error) }); }
     }
     if (req.method === 'GET' && url.pathname === '/api/payments/checkout-test/status') {
       const reference = safeReference(url.searchParams.get('reference'));
+      const checkoutId = url.searchParams.get('checkout_id');
+      console.log('[Bachs] status request', { hasReference: Boolean(reference), hasCheckoutId: Boolean(checkoutId) });
+      if (checkoutId) {
+        const verified = await verifyBachsPayment(checkoutId);
+        console.log('[Bachs] status verified', { checkoutId, status: verified.status, amountMatches: verified.amountMatches, currencyMatches: verified.currencyMatches });
+        return send(res, 200, { reference, checkoutId, status: verified.status });
+      }
       const payment = reference && await verifyAndPersist(reference);
       return payment ? send(res, 200, { reference: payment.reference, status: payment.status }) : send(res, 404, { error: 'Payment not found.' });
     }
