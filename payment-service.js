@@ -63,7 +63,13 @@ function normalizeCheckoutUrl(value) {
 function bachsUrl(path, id) {
   const base = process.env.BACHS_API_BASE_URL;
   if (!base) throw new Error('BACHS_API_BASE_URL is not configured.');
-  return new URL(path.replace('{id}', encodeURIComponent(id)), base).toString();
+
+  const resolvedPath = path
+    .replace('{id}', encodeURIComponent(id ?? ''))
+    .replace(/^\/+/, '');
+
+  const baseUrl = base.endsWith('/') ? base : base + '/';
+  return new URL(resolvedPath, baseUrl).toString();
 }
 
 function errorMessage(body, fallback) {
@@ -81,10 +87,18 @@ function errorMessage(body, fallback) {
   return fallback;
 }
 
-async function bachsRequest(url, options) {
+async function bachsRequest(url, options = {}) {
   const response = await fetch(url, options);
   const body = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(errorMessage(body, `Bachs API returned HTTP ${response.status}.`));
+
+  if (!response.ok) {
+    const parsedUrl = new URL(url);
+    const method = options.method || 'GET';
+    throw new Error(
+      `Bachs ${method} ${parsedUrl.host}${parsedUrl.pathname} -> HTTP ${response.status}: ${errorMessage(body, 'no message')}`,
+    );
+  }
+
   return body;
 }
 
@@ -111,7 +125,7 @@ export async function initializeBachsPayment(reference, callbackUrl) {
   };
 
   const result = await bachsRequest(
-    bachsUrl('/v1/checkout-sessions'),
+    bachsUrl(process.env.BACHS_INITIALIZE_PATH || '/v1/checkout-sessions'),
     {
       method: 'POST',
       headers: {
@@ -137,7 +151,7 @@ export async function verifyBachsPayment(checkoutId) {
   if (!checkoutId) throw new Error('Bachs checkout ID is missing.');
 
   const response = await bachsRequest(
-    bachsUrl('/v1/checkout-sessions/{id}', checkoutId),
+    bachsUrl(process.env.BACHS_VERIFY_PATH || '/v1/checkout-sessions/{id}', checkoutId),
     {
       headers: {
         Authorization: `Bearer ${process.env.BACHS_SECRET_KEY}`,
