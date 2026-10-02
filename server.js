@@ -67,8 +67,9 @@ const handler = async (req, res) => {
         const initialized = await initializeBachsPayment(reference, callbackUrl);
         try { await updatePayment(reference, { providerReference: initialized.checkoutId, checkoutUrl: initialized.checkoutUrl }); } catch (error) { console.warn('[Bachs] payment store update unavailable', error.message); }
         console.log('[Bachs] redirecting to checkout', { checkoutId: initialized.checkoutId, checkoutUrl: initialized.checkoutUrl });
-        res.writeHead(303, { Location: initialized.checkoutUrl, 'Cache-Control': 'no-store' });
-        return res.end();
+        const checkoutUrl = JSON.stringify(initialized.checkoutUrl);
+        const html = '<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=' + initialized.checkoutUrl.replace(/"/g, '&quot;') + '"><title>Opening secure checkout</title></head><body><p>Opening secure Bachs checkout…</p><p><a href="' + initialized.checkoutUrl.replace(/"/g, '&quot;') + '">Continue to checkout</a></p><script>window.location.replace(' + checkoutUrl + ');</script></body></html>';
+        return send(res, 200, html, 'text/html; charset=utf-8');
       } catch (error) {
         console.error('[Bachs] start checkout failed', error);
         return send(res, 502, { error: error instanceof Error ? error.message : JSON.stringify(error) });
