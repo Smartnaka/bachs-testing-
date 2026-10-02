@@ -45,16 +45,16 @@ async function verifyAndPersist(reference) {
 const handler = async (req, res) => {
   const url = new URL(req.url, baseUrl(req));
   try {
-    if (req.method === 'GET' && url.pathname === '/checkout-test') return serve(res, 'checkout-test.html');
-    if (req.method === 'GET' && url.pathname === '/dashboard') return serve(res, 'dashboard.html');
-    if (req.method === 'GET' && url.pathname === '/checkout-test/callback') {
+    if (req.method === 'GET' && (url.pathname === '/checkout-test' || url.pathname === '/api/checkout-test')) return serve(res, 'checkout-test.html');
+    if (req.method === 'GET' && (url.pathname === '/dashboard' || url.pathname === '/api/dashboard')) return serve(res, 'dashboard.html');
+    if (req.method === 'GET' && (url.pathname === '/checkout-test/callback' || url.pathname === '/api/checkout-test/callback')) {
       const reference = safeReference(url.searchParams.get('reference') || url.searchParams.get('tx_ref'));
       if (!reference) return send(res, 400, '<h1>Invalid payment callback</h1>', 'text/html; charset=utf-8');
       res.writeHead(302, { Location: `/checkout-test?reference=${encodeURIComponent(reference)}`, 'Cache-Control': 'no-store' });
       return res.end();
     }
-    if (req.method === 'GET' && url.pathname === '/checkout-test.js') return serve(res, 'checkout-test.js');
-    if (req.method === 'GET' && url.pathname === '/dashboard.js') return serve(res, 'dashboard.js');
+    if (req.method === 'GET' && (url.pathname === '/checkout-test.js' || url.pathname === '/api/checkout-test.js')) return serve(res, 'checkout-test.js');
+    if (req.method === 'GET' && (url.pathname === '/dashboard.js' || url.pathname === '/api/dashboard.js')) return serve(res, 'dashboard.js');
     if (req.method === 'POST' && url.pathname === '/api/payments/checkout-test/initialize') {
       const reference = `cake_test_${crypto.randomUUID().replaceAll('-', '')}`;
       try { await createPayment({ reference, ...TEST_ORDER, status: 'pending', createdAt: new Date().toISOString() }); } catch (error) { console.warn('Payment store unavailable; continuing with provider verification.', error.message); }
