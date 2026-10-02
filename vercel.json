@@ -5,7 +5,6 @@
     { "source": "/dashboard", "destination": "/api/dashboard" },
     { "source": "/checkout-test.js", "destination": "/api/checkout-test.js" },
     { "source": "/dashboard.js", "destination": "/api/dashboard.js" },
-    { "source": "/api/:path*", "destination": "/api/:path*" },
     { "source": "/", "destination": "/api/checkout-test" }
   ]
 }
