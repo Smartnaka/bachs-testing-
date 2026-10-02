@@ -101,7 +101,7 @@ export async function initializeBachsPayment(reference, callbackUrl) {
   };
 
   const result = await bachsRequest(
-    bachsUrl(process.env.BACHS_INITIALIZE_PATH || '/v1/checkout-sessions'),
+    bachsUrl('/v1/checkout-sessions'),
     {
       method: 'POST',
       headers: {
@@ -126,7 +126,7 @@ export async function verifyBachsPayment(checkoutId) {
   if (!checkoutId) throw new Error('Bachs checkout ID is missing.');
 
   const response = await bachsRequest(
-    bachsUrl(process.env.BACHS_VERIFY_PATH || '/v1/checkout-sessions/{id}', checkoutId),
+    bachsUrl('/v1/checkout-sessions/{id}', checkoutId),
     {
       headers: {
         Authorization: `Bearer ${process.env.BACHS_SECRET_KEY}`,
