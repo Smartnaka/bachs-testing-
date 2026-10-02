@@ -120,7 +120,7 @@ export async function initializeBachsPayment(reference, callbackUrl) {
   const checkoutUrl = normalizeCheckoutUrl(extractCheckoutUrl(result));
   return {
     reference: extractReference(result) || reference,
-    checkoutId: result.checkout_id,
+    checkoutId: result.checkout_id || result.id || result.data?.checkout_id || result.data?.id,
     checkoutUrl,
   };
 }
