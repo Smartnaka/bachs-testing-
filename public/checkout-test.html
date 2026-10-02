@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Checkout test</title><style>body{font-family:system-ui,sans-serif;background:#f6f7fb;margin:0;color:#182031}main{max-width:440px;margin:10vh auto;padding:28px;background:white;border-radius:16px;box-shadow:0 8px 28px #18203118}p{color:#596277}.amount{font-size:2rem;font-weight:750}button{width:100%;border:0;border-radius:9px;padding:15px;background:#1e56d9;color:white;font-weight:700;font-size:1rem;cursor:pointer}button:disabled{opacity:.6;cursor:wait}.notice{min-height:25px;margin:18px 0}.error{color:#b42318}.success{color:#067647}a{color:#1e56d9}</style></head><body><main><p>CHECKOUT TEST</p><h1>Test Cake Order</h1><p>Payment test</p><div class="amount">₦5,000</div><p id="notice" class="notice" role="status"></p><form method="POST" action="/api/payments/checkout-test/start"><button id="pay" type="submit">Pay ₦5,000</button></form></main><script>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Checkout test</title><style>body{font-family:system-ui,sans-serif;background:#f6f7fb;margin:0;color:#182031}main{max-width:440px;margin:10vh auto;padding:28px;background:white;border-radius:16px;box-shadow:0 8px 28px #18203118}p{color:#596277}.amount{font-size:2rem;font-weight:750}button{width:100%;border:0;border-radius:9px;padding:15px;background:#1e56d9;color:white;font-weight:700;font-size:1rem;cursor:pointer}button:disabled{opacity:.6;cursor:wait}.notice{min-height:25px;margin:18px 0}.error{color:#b42318}.success{color:#067647}a{color:#1e56d9}</style></head><body><main><p>CHECKOUT TEST</p><h1>Test Cake Order</h1><p>Payment test</p><div class="amount">₦5,000</div><p id="notice" class="notice" role="status"></p><button id="pay" type="button">Pay ₦5,000</button></main><script>
 const button = document.querySelector('#pay');
 const notice = document.querySelector('#notice');
 
@@ -36,10 +36,28 @@ async function checkReturn() {
   }
 }
 
-button.form?.addEventListener('submit', () => {
+button.addEventListener('click', async () => {
   button.disabled = true;
   button.textContent = 'Opening secure checkout…';
   show('Initializing secure Bachs checkout…');
+  try {
+    const response = await fetch('/api/payments/checkout-test/start', {
+      method: 'POST',
+      headers: { Accept: 'application/json' },
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(typeof result.error === 'string' ? result.error : JSON.stringify(result.error || result));
+    }
+    if (typeof result.checkoutUrl !== 'string' || !/^https?:\/\//i.test(result.checkoutUrl)) {
+      throw new Error('Bachs did not return a valid hosted checkout URL.');
+    }
+    window.location.assign(result.checkoutUrl);
+  } catch (error) {
+    show(error instanceof Error ? error.message : String(error), 'error');
+    button.textContent = 'Try again';
+    button.disabled = false;
+  }
 });
 
 checkReturn();
