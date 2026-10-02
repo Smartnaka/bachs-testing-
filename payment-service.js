@@ -37,6 +37,8 @@ export function extractCheckoutUrl(payload) {
     payload.checkoutUrl,
     payload.data?.checkout_url,
     payload.data?.checkoutUrl,
+    payload.url,
+    payload.data?.url,
   );
 }
 
@@ -90,6 +92,10 @@ export async function initializeBachsPayment(reference, callbackUrl) {
   if (!process.env.BACHS_SECRET_KEY) throw new Error('BACHS_SECRET_KEY is not configured.');
 
   const payload = {
+    customer: {
+      email: 'test@example.com',
+      name: TEST_ORDER.name,
+    },
     pricing: {
       amount: TEST_ORDER.amount.toFixed(2),
       currency: TEST_ORDER.currency,
@@ -112,6 +118,7 @@ export async function initializeBachsPayment(reference, callbackUrl) {
         Authorization: `Bearer ${process.env.BACHS_SECRET_KEY}`,
         'Content-Type': 'application/json',
         Accept: 'application/json',
+        'Idempotency-Key': reference,
       },
       body: JSON.stringify(payload),
     },
