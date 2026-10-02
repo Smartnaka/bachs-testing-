@@ -1,8 +1,16 @@
 {
-  "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
+  "functions": {
+    "api/index.js": {
+      "runtime": "nodejs22.x"
     }
+  },
+  "rewrites": [
+    { "source": "/checkout-test", "destination": "/api" },
+    { "source": "/checkout-test/callback", "destination": "/api" },
+    { "source": "/dashboard", "destination": "/api" },
+    { "source": "/checkout-test.js", "destination": "/api" },
+    { "source": "/dashboard.js", "destination": "/api" },
+    { "source": "/api/:path*", "destination": "/api" },
+    { "source": "/", "destination": "/api" }
   ]
 }
