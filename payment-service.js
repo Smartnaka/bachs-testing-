@@ -25,14 +25,50 @@ export function isValidPaidTransaction(transaction) {
     && currency === TEST_ORDER.currency;
 }
 
+function firstString(...values) {
+  return values.find((value) => typeof value === 'string' && value.trim())?.trim() || null;
+}
+
 export function extractCheckoutUrl(payload) {
-  return payload.checkout_url || payload.checkoutUrl || payload.authorization_url
-    || payload.data?.checkout_url || payload.data?.checkoutUrl || payload.data?.authorization_url;
+  return firstString(
+    payload.checkout_url,
+    payload.checkoutUrl,
+    payload.authorization_url,
+    payload.payment_url,
+    payload.paymentUrl,
+    payload.data?.checkout_url,
+    payload.data?.checkoutUrl,
+    payload.data?.authorization_url,
+    payload.data?.payment_url,
+    payload.data?.paymentUrl,
+  );
 }
 
 export function extractReference(payload) {
-  return payload.reference || payload.transaction_reference || payload.data?.reference
-    || payload.data?.transaction_reference || payload.data?.id;
+  return firstString(
+    payload.reference,
+    payload.transaction_reference,
+    payload.data?.reference,
+    payload.data?.transaction_reference,
+    payload.data?.id,
+  );
+}
+
+function normalizeCheckoutUrl(value) {
+  if (!value) throw new Error('Bachs did not return a hosted checkout URL.');
+
+  let url;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error('Bachs returned an invalid checkout URL.');
+  }
+
+  if (!['http:', 'https:'].includes(url.protocol)) {
+    throw new Error('Bachs returned an unsupported checkout URL.');
+  }
+
+  return url.toString();
 }
 
 function bachsUrl(path, reference) {
@@ -65,8 +101,7 @@ export async function initializeBachsPayment(reference, callbackUrl) {
     headers: { Authorization: `Bearer ${process.env.BACHS_SECRET_KEY}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-  const checkoutUrl = extractCheckoutUrl(result);
-  if (!checkoutUrl) throw new Error('Bachs did not return a hosted checkout URL.');
+  const checkoutUrl = normalizeCheckoutUrl(extractCheckoutUrl(result));
   return { reference: extractReference(result) || reference, checkoutUrl };
 }
 
