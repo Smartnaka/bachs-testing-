@@ -161,16 +161,30 @@ export async function verifyBachsPayment(checkoutId) {
   );
 
   const transaction = response.data || response;
-  const amount = Number(transaction.amount);
-  const currency = String(transaction.currency || '').toUpperCase();
-  const status = normalizeStatus(transaction.payment_status || transaction.status);
+  const amount = Number(
+    transaction.amount
+    ?? transaction.pricing?.amount
+    ?? transaction.data?.amount
+    ?? transaction.data?.pricing?.amount,
+  );
+  const currency = String(
+    transaction.currency
+    ?? transaction.pricing?.currency
+    ?? transaction.data?.currency
+    ?? transaction.data?.pricing?.currency
+    ?? '',
+  ).toUpperCase();
+  const status = normalizeStatus(transaction.payment_status || transaction.status || transaction.data?.payment_status || transaction.data?.status);
+  const amountMatches = amount === TEST_ORDER.amount;
+  const currencyMatches = currency === TEST_ORDER.currency;
+  const verifiedStatus = status === 'paid' && amountMatches && currencyMatches ? 'paid' : status === 'paid' ? 'failed' : status;
 
   return {
     raw: transaction,
     providerReference: transaction.checkout_id || checkoutId,
-    status: status === 'paid' && amount === TEST_ORDER.amount && currency === TEST_ORDER.currency ? 'paid' : status,
-    amountMatches: amount === TEST_ORDER.amount,
-    currencyMatches: currency === TEST_ORDER.currency,
+    status: verifiedStatus,
+    amountMatches,
+    currencyMatches,
   };
 }
 
