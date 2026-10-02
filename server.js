@@ -63,7 +63,10 @@ const handler = async (req, res) => {
       const reference = `cake_test_${crypto.randomUUID().replaceAll('-', '')}`;
       try { await createPayment({ reference, ...TEST_ORDER, status: 'pending', createdAt: new Date().toISOString() }); } catch (error) { console.warn('Payment store unavailable; continuing with provider verification.', error.message); }
       try {
-        const initialized = await initializeBachsPayment(reference, `${baseUrl(req)}/checkout-test/callback?reference=${reference}`);
+        const callbackUrl = `${baseUrl(req)}/checkout-test/callback?reference=${reference}`;
+        console.log('[Bachs] creating checkout session', { reference, callbackUrl, apiBase: process.env.BACHS_API_BASE_URL });
+        const initialized = await initializeBachsPayment(reference, callbackUrl);
+        console.log('[Bachs] checkout session created', { reference, checkoutId: initialized.checkoutId, checkoutUrl: initialized.checkoutUrl });
         try { await updatePayment(reference, { providerReference: initialized.checkoutId, checkoutUrl: initialized.checkoutUrl }); } catch (error) { console.warn('Payment store unavailable after initialization.', error.message); }
         return send(res, 201, { reference, checkoutUrl: initialized.checkoutUrl });
       } catch (error) { console.error('[Bachs] initialize failed', error); try { await updatePayment(reference, { status: 'failed', failureReason: error instanceof Error ? error.message : JSON.stringify(error) }); } catch {} return send(res, 502, { error: error instanceof Error ? error.message : JSON.stringify(error) }); }
