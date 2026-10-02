@@ -6,7 +6,7 @@ function show(message, style = '') {
   notice.className = `notice ${style}`;
 }
 
-function normalizeCheckoutUrl(value) {
+function errorText(value) {\n  if (typeof value === 'string') return value;\n  try { return value ? JSON.stringify(value) : 'Unable to initialize payment.'; } catch { return 'Unable to initialize payment.'; }\n}\n\nfunction normalizeCheckoutUrl(value) {
   if (typeof value !== 'string' || !value.trim()) {
     throw new Error('Bachs returned an empty checkout URL.');
   }
@@ -71,7 +71,7 @@ button.addEventListener('click', async () => {
     const result = await response.json().catch(() => ({}));
 
     if (!response.ok) {
-      throw new Error(result.error || `Unable to initialize payment (HTTP ${response.status}).`);
+      throw new Error(errorText(result.error) || `Unable to initialize payment (HTTP ${response.status}).`);
     }
 
     const checkoutUrl = normalizeCheckoutUrl(result.checkoutUrl);
