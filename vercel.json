@@ -1,11 +1,11 @@
 {
   "rewrites": [
-    { "source": "/checkout-test", "destination": "/api" },
-    { "source": "/checkout-test/callback", "destination": "/api" },
-    { "source": "/dashboard", "destination": "/api" },
-    { "source": "/checkout-test.js", "destination": "/api" },
-    { "source": "/dashboard.js", "destination": "/api" },
-    { "source": "/api/:path*", "destination": "/api" },
-    { "source": "/", "destination": "/api" }
+    { "source": "/checkout-test", "destination": "/api/checkout-test" },
+    { "source": "/checkout-test/callback", "destination": "/api/checkout-test/callback" },
+    { "source": "/dashboard", "destination": "/api/dashboard" },
+    { "source": "/checkout-test.js", "destination": "/api/checkout-test.js" },
+    { "source": "/dashboard.js", "destination": "/api/dashboard.js" },
+    { "source": "/api/:path*", "destination": "/api/:path*" },
+    { "source": "/", "destination": "/api/checkout-test" }
   ]
 }
