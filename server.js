@@ -29,15 +29,17 @@ async function serve(res, filename) { send(res, 200, await fs.readFile(path.join
 
 async function verifyAndPersist(reference) {
   const payment = await getPayment(reference);
-  if (!payment) return null;
-  if (payment.status === 'paid') return payment;
+  if (payment?.status === 'paid') return payment;
   const verified = await verifyBachsPayment(reference);
   const status = verified.status;
   // A provider success with an unexpected amount/currency is never accepted as paid.
   const acceptable = status === 'paid' && verified.amountMatches && verified.currencyMatches;
   const nextStatus = acceptable ? 'paid' : status;
-  if (!canTransition(payment.status, nextStatus)) return payment;
-  return updatePayment(reference, { status: nextStatus, providerReference: verified.providerReference, verifiedAt: new Date().toISOString() });
+  if (payment && !canTransition(payment.status, nextStatus)) return payment;
+  const persisted = payment
+    ? await updatePayment(reference, { status: nextStatus, providerReference: verified.providerReference, verifiedAt: new Date().toISOString() })
+    : null;
+  return persisted || { reference, ...TEST_ORDER, status: nextStatus, providerReference: verified.providerReference, verifiedAt: new Date().toISOString() };
 }
 
 const handler = async (req, res) => {
@@ -55,10 +57,10 @@ const handler = async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/dashboard.js') return serve(res, 'dashboard.js');
     if (req.method === 'POST' && url.pathname === '/api/payments/checkout-test/initialize') {
       const reference = `cake_test_${crypto.randomUUID().replaceAll('-', '')}`;
-      await createPayment({ reference, ...TEST_ORDER, status: 'pending', createdAt: new Date().toISOString() });
+      try { await createPayment({ reference, ...TEST_ORDER, status: 'pending', createdAt: new Date().toISOString() }); } catch (error) { console.warn('Payment store unavailable; continuing with provider verification.', error.message); }
       try {
         const initialized = await initializeBachsPayment(reference, `${baseUrl(req)}/checkout-test/callback?reference=${reference}`);
-        await updatePayment(reference, { providerReference: initialized.reference, checkoutUrl: initialized.checkoutUrl });
+        try { await updatePayment(reference, { providerReference: initialized.reference, checkoutUrl: initialized.checkoutUrl }); } catch (error) { console.warn('Payment store unavailable after initialization.', error.message); }
         return send(res, 201, { reference, checkoutUrl: initialized.checkoutUrl });
       } catch (error) { await updatePayment(reference, { status: 'failed', failureReason: error.message }); return send(res, 502, { error: error.message }); }
     }
@@ -68,14 +70,14 @@ const handler = async (req, res) => {
       return payment ? send(res, 200, { reference: payment.reference, status: payment.status }) : send(res, 404, { error: 'Payment not found.' });
     }
     if (req.method === 'GET' && url.pathname === '/api/payments/checkout-test/receipt') {
-      const reference = safeReference(url.searchParams.get('reference')); const payment = reference && await getPayment(reference);
+      const reference = safeReference(url.searchParams.get('reference')); const payment = reference && await verifyAndPersist(reference);
       return payment && payment.status === 'paid' ? send(res, 200, { reference: payment.reference, name: payment.name, amount: payment.amount, currency: payment.currency, status: payment.status }) : send(res, 404, { error: 'Verified payment not found.' });
     }
     if (req.method === 'POST' && url.pathname === '/api/webhooks/bachs') {
       const raw = await body(req); const signature = req.headers['x-bachs-signature'] || req.headers['x-webhook-signature'];
       if (!validWebhookSignature(raw, signature)) return send(res, 401, { error: 'Invalid webhook signature.' });
       const event = JSON.parse(raw.toString('utf8')); const reference = safeReference(extractReference(event));
-      if (!reference || !await getPayment(reference)) return send(res, 200, { received: true });
+      if (!reference) return send(res, 200, { received: true });
       await verifyAndPersist(reference); // verification makes webhook updates idempotent and authoritative
       return send(res, 200, { received: true });
     }
