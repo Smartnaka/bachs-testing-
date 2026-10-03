@@ -103,25 +103,17 @@ async function bachsRequest(url, options = {}) {
 }
 
 export async function initializeBachsPayment(reference, callbackUrl) {
-  if (!process.env.BACHS_SECRET_KEY) throw new Error('BACHS_SECRET_KEY is not configured.');
+  const apiKey = process.env.BACHS_API_KEY || process.env.BACHS_SECRET_KEY;
+  if (!apiKey) throw new Error('BACHS_API_KEY is not configured.');
+  if (!process.env.BACHS_PRODUCT_ID) throw new Error('BACHS_PRODUCT_ID is not configured.');
 
   const payload = {
+    product_cart: [{ product_id: process.env.BACHS_PRODUCT_ID, quantity: 1 }],
     customer: {
       email: 'test@example.com',
-      name: TEST_ORDER.name,
     },
-    pricing: {
-      amount: TEST_ORDER.amount.toFixed(2),
-      currency: TEST_ORDER.currency,
-    },
-    reference,
-    success_url: callbackUrl,
+    return_url: callbackUrl,
     cancel_url: callbackUrl,
-    metadata: {
-      order_name: TEST_ORDER.name,
-      description: TEST_ORDER.description,
-      test_checkout: true,
-    },
   };
 
   const result = await bachsRequest(
@@ -147,7 +139,8 @@ export async function initializeBachsPayment(reference, callbackUrl) {
 }
 
 export async function verifyBachsPayment(checkoutId) {
-  if (!process.env.BACHS_SECRET_KEY) throw new Error('BACHS_SECRET_KEY is not configured.');
+  const apiKey = process.env.BACHS_API_KEY || process.env.BACHS_SECRET_KEY;
+  if (!apiKey) throw new Error('BACHS_API_KEY is not configured.');
   if (!checkoutId) throw new Error('Bachs checkout ID is missing.');
 
   const response = await bachsRequest(
